@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Caesar Cipher Wheel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+/* VOICE: friendly classroom kit, clear and playful, never childish
+   IDEA: the cardboard decoder wheel from a craft kit, two stacked disks on a pin
+   PICTURE: a large tilted 3D wheel; the inner red disk physically turns with the shift
+   COLOUR and TYPE: school-yellow field, blue = plaintext, red = ciphertext; Rubik
+   LAYOUT: wheel left, controls right; letter strip beneath; stacks on phones */
+:root{color-scheme:light dark;
+--bg:light-dark(#ffd23f,#16150f);--ink:light-dark(#15130c,#f4f0e4);--soft:light-dark(#4b4630,#b9b39f);
+--card:light-dark(#ffffff,#25231c);--line:light-dark(#e6dfc8,#3b382e);
+--plain:light-dark(#1f5fd1,#79a6ff);--cipher:light-dark(#d4372a,#ff7b6c);
+--ptint:light-dark(#e3edff,#1d2b48);--ctint:light-dark(#ffe4df,#4a221d);
+--edge:light-dark(#d8d0b8,#45412f);--edge2:light-dark(#b8392d,#7d2b22);--hl:#ffb800}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Rubik,system-ui,sans-serif;overflow-x:clip}
+.band{padding:clamp(24px,4vw,56px) max(5vw,16px)}
+.wrap{max-width:1240px;margin:0 auto}
+h1{font-size:clamp(32px,5vw,48px);line-height:1.05;margin:0 0 6px;font-weight:800;text-wrap:balance}
+.lede{margin:0;max-width:62ch;color:var(--soft)}
+.p{color:var(--plain);font-weight:700}.c{color:var(--cipher);font-weight:700}
+.main{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:clamp(20px,3vw,40px);align-items:start;margin-top:22px}
+@media(max-width:860px){.main{grid-template-columns:minmax(0,1fr)}}
+/* 3D wheel */
+.stagebox{display:flex;flex-direction:column;align-items:center}
+.stage{width:min(100%,500px);aspect-ratio:1;perspective:1500px;touch-action:none;cursor:grab;user-select:none;margin-top:-4%}
+.stage.drag{cursor:grabbing}
+.tilt{position:relative;width:100%;height:100%;transform-style:preserve-3d;transform:rotateX(var(--tilt,46deg));transition:transform .7s cubic-bezier(.3,.7,.2,1)}
+.flat .tilt{--tilt:0deg}
+.L{position:absolute;inset:0;border-radius:50%}
+.L.in{inset:14%}
+.shadow{background:radial-gradient(closest-side,rgba(0,0,0,.42),transparent);transform:translateZ(-6px) scale(1.04);filter:blur(6px)}
+.face,.hl,.hub{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+#inner{transition:transform .8s cubic-bezier(.25,.8,.25,1.15)}
+.hl{transition:transform .45s cubic-bezier(.3,.8,.3,1);pointer-events:none}
+.flip{margin-top:-2%;display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+svg text{font-family:Rubik,sans-serif;text-anchor:middle}
+/* panel */
+.panel{background:var(--card);border-radius:20px;padding:clamp(18px,2.4vw,28px);box-shadow:0 10px 0 rgba(0,0,0,.12)}
+.seg{display:grid;grid-template-columns:1fr 1fr;background:var(--bg);border-radius:14px;padding:5px;gap:5px}
+.seg button{border:0;border-radius:10px;padding:12px;font:700 16px Rubik,sans-serif;background:transparent;color:var(--ink);cursor:pointer;min-height:44px}
+.seg button[aria-pressed=true]{background:var(--card);box-shadow:0 2px 0 rgba(0,0,0,.15)}
+.seg button[data-m=enc][aria-pressed=true]{color:var(--plain)}.seg button[data-m=dec][aria-pressed=true]{color:var(--cipher)}
+h2{font-size:17px;margin:20px 0 8px;font-weight:700}
+.shiftrow{display:flex;align-items:center;gap:12px}
+.big{font-size:clamp(36px,5vw,46px);font-weight:800;line-height:1;min-width:3.2ch;text-align:center;font-variant-numeric:tabular-nums}
+.btn{border:2px solid var(--ink);background:var(--card);color:var(--ink);border-radius:12px;min-width:44px;min-height:44px;font:700 16px Rubik,sans-serif;cursor:pointer;padding:0 14px}
+.btn:hover{background:var(--bg)}
+.btn.solid{background:var(--ink);color:var(--card)}
+:focus-visible{outline:3px solid var(--plain);outline-offset:2px}
+input[type=range]{width:100%;accent-color:var(--cipher);height:44px}
+.note{font-size:14px;color:var(--soft);margin:2px 0 0}
+.box{border:3px solid var(--line);border-radius:14px;padding:4px 12px 10px;margin-top:6px;position:relative}
+.box .tag{display:inline-block;font-size:13px;font-weight:700;padding:3px 10px;border-radius:99px;color:#fff;margin:8px 0 6px}
+.box.plain{border-color:var(--plain)}.box.plain .tag{background:var(--plain)}
+.box.cipher{border-color:var(--cipher)}.box.cipher .tag{background:var(--cipher)}
+textarea{width:100%;border:0;background:transparent;color:var(--ink);font:500 19px/1.4 Rubik,sans-serif;resize:vertical;min-height:64px;padding:0;letter-spacing:.04em}
+textarea:focus{outline:none}
+.out{display:flex;flex-wrap:wrap;gap:4px;min-height:42px;font-size:19px;font-weight:700}
+.ch{display:inline-grid;place-items:center;min-width:26px;height:36px;border-radius:7px;cursor:pointer;letter-spacing:0}
+.ch.sp{min-width:12px;cursor:default}
+.ch.on{background:var(--hl);color:#15130c}
+.plain .ch{color:var(--plain)}.cipher .ch{color:var(--cipher)}
+.plain .ch.on,.cipher .ch.on{color:#15130c}
+.how{background:var(--bg);border-radius:12px;padding:10px 14px;margin-top:14px;font-size:15px}
+.acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.found{font-weight:700;color:var(--plain);font-size:15px;min-height:1.4em;margin:8px 0 0}
+/* strip */
+.strip{background:var(--card);border-radius:20px;padding:16px 16px 10px;margin-top:28px;box-shadow:0 10px 0 rgba(0,0,0,.12)}
+.scroll{overflow-x:auto}
+.grid{display:grid;grid-template-columns:110px repeat(26,minmax(30px,1fr));min-width:900px;gap:3px 2px;align-items:center}
+.grid div{text-align:center;font-weight:700;font-size:17px;padding:6px 0;border-radius:6px;cursor:pointer}
+.grid .rl{text-align:left;font-size:14px;cursor:default;padding-left:4px}
+.grid .num{font-size:12px;font-weight:500;color:var(--soft);padding:0}
+.grid .pr{color:var(--plain);background:var(--ptint)}.grid .cr{color:var(--cipher);background:var(--ctint)}
+.grid .act{background:var(--hl)!important;color:#15130c!important}
+.foot{font-size:14px;color:var(--soft);margin-top:18px}
+@media(prefers-reduced-motion:reduce){.tilt,#inner,.hl{transition:none}}
+</style>
+</head>
+<body>
+<section class="band"><div class="wrap">
+  <h1>Caesar cipher wheel</h1>
+  <p class="lede">The <span class="p">blue outer ring is plaintext</span>, and the <span class="c">red inner disk is ciphertext</span>. Change the shift and the red disk turns. Then find a letter on one ring and read its partner on the other.</p>
+
+  <div class="main">
+    <div class="stagebox">
+      <div class="stage" id="stage" aria-label="Cipher wheel. Drag to turn the inner disk.">
+        <div class="tilt" id="tilt"></div>
+      </div>
+      <div class="flip">
+        <button class="btn" id="flat" aria-pressed="false">Flat view</button>
+        <button class="btn" id="reset">Reset to shift 0</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="seg" role="group" aria-label="Mode">
+        <button data-m="enc" aria-pressed="true">Encrypt</button>
+        <button data-m="dec" aria-pressed="false">Decrypt</button>
+      </div>
+
+      <h2>Shift key</h2>
+      <div class="shiftrow">
+        <button class="btn" id="minus" aria-label="Shift down by one">−</button>
+        <div class="big" id="sv">+3</div>
+        <button class="btn" id="plus" aria-label="Shift up by one">+</button>
+        <input type="range" id="slider" min="-25" max="25" value="3" aria-label="Shift key">
+      </div>
+      <p class="note" id="equiv"></p>
+
+      <div class="box" id="inBox"><span class="tag" id="inTag"></span>
+        <textarea id="inp" spellcheck="false" aria-label="Input message">Meet me at the library</textarea>
+      </div>
+      <div class="box" id="outBox"><span class="tag" id="outTag"></span>
+        <div class="out" id="out" aria-live="polite"></div>
+      </div>
+
+      <div class="acts">
+        <button class="btn solid" id="play">▶ Step through on the wheel</button>
+        <button class="btn" id="copy">Copy result</button>
+        <button class="btn" id="swap">Use result as input</button>
+        <button class="btn" id="mystery">Mystery message</button>
+      </div>
+      <p class="found" id="found"></p>
+      <div class="how" id="how"></div>
+    </div>
+  </div>
+
+  <div class="strip">
+    <div class="scroll"><div class="grid" id="grid"></div></div>
+  </div>
+  <p class="foot">Tip: drag the wheel to turn the red disk by hand. Tap any letter in the result or the strip to light it up on the wheel. A negative shift turns the disk the other way. For example, −3 gives the same wheel as +23.</p>
+</div></section>
+
+<script>
+{
+const A='ABCDEFGHIJKLMNOPQRSTUVWXYZ',ST=360/26,$=id=>document.getElementById(id);
+const mod=n=>((n%26)+26)%26;
+let shift=3,mode='enc',active=0,timer=null,myst=null;
+const C=200,R1=198,R2=146,RI=144,RH=96;
+const pt=(r,a)=>{const t=(a-90)*Math.PI/180;return [C+r*Math.cos(t),C+r*Math.sin(t)]};
+
+/* build the 3D stack */
+const layers=(cls,from,to,col)=>{let h='';for(let z=from;z<=to;z+=2)h+=`<div class="L ${cls}" style="transform:translateZ(${z}px);background:${col}"></div>`;return h};
+const outerFace=`<svg class="face" viewBox="0 0 400 400" style="transform:translateZ(14px)">
+<circle cx="200" cy="200" r="${R1}" fill="var(--card)" stroke="var(--edge)" stroke-width="2"/>
+<circle cx="200" cy="200" r="${(R1+R2)/2}" fill="none" stroke="var(--ptint)" stroke-width="${R1-R2}"/>
+${A.split('').map((l,i)=>`<g transform="rotate(${i*ST} 200 200)"><line x1="200" y1="4" x2="200" y2="52" stroke="var(--plain)" stroke-opacity=".25" transform="rotate(${ST/2} 200 200)"/>
+<text x="200" y="34" font-size="25" font-weight="800" fill="var(--plain)">${l}</text><text x="200" y="48" font-size="10" fill="var(--plain)" opacity=".7">${i}</text></g>`).join('')}
+</svg>`;
+const innerFace=`<svg class="face" id="inner" viewBox="0 0 400 400">
+<circle cx="200" cy="200" r="${RI}" fill="var(--ctint)" stroke="var(--cipher)" stroke-width="2.5"/>
+<circle cx="200" cy="200" r="${RH}" fill="var(--card)" stroke="var(--cipher)" stroke-opacity=".4"/>
+${A.split('').map((l,i)=>`<g transform="rotate(${i*ST} 200 200)"><line x1="200" y1="56" x2="200" y2="104" stroke="var(--cipher)" stroke-opacity=".3" transform="rotate(${ST/2} 200 200)"/>
+<text x="200" y="88" font-size="23" font-weight="800" fill="var(--cipher)">${l}</text></g>`).join('')}
+</svg>`;
+const [a1,b1]=pt(R1+2,-ST/2),[a2,b2]=pt(R1+2,ST/2),[a3,b3]=pt(RH,ST/2),[a4,b4]=pt(RH,-ST/2);
+const hl=`<svg class="hl" id="hl" viewBox="0 0 400 400"><path d="M${a1} ${b1}A${R1+2} ${R1+2} 0 0 1 ${a2} ${b2}L${a3} ${b3}A${RH} ${RH} 0 0 0 ${a4} ${b4}Z" fill="#ffb800" fill-opacity=".28" stroke="#ffb800" stroke-width="4" stroke-linejoin="round"/></svg>`;
+const hub=`<svg class="hub" viewBox="0 0 400 400" style="transform:translateZ(28px)"><circle cx="200" cy="200" r="58" fill="var(--card)" stroke="var(--line)" stroke-width="2"/>
+<text x="200" y="186" font-size="13" fill="var(--soft)">shift</text><text id="hubv" x="200" y="222" font-size="38" font-weight="800" fill="var(--ink)">+3</text>
+<circle cx="200" cy="200" r="5" fill="var(--soft)" transform="translate(0 38)"/></svg>`;
+$('tilt').innerHTML=`<div class="L shadow"></div>${layers('',0,12,'var(--edge)')}${outerFace}${layers('in',16,24,'var(--edge2)')}${innerFace.replace('class="face"','class="face" style="transform:translateZ(26px)"')}<div style="position:absolute;inset:0;transform:translateZ(27px);transform-style:preserve-3d">${hl}</div>${hub}`;
+
+/* strip */
+$('grid').innerHTML=`<div class="rl num">position</div>${A.split('').map((_,i)=>`<div class="num" data-i="${i}">${i}</div>`).join('')}
+<div class="rl p">Plaintext</div>${A.split('').map((l,i)=>`<div class="pr" data-i="${i}">${l}</div>`).join('')}
+<div class="rl c">Ciphertext</div>${A.split('').map((_,i)=>`<div class="cr" data-i="${i}"></div>`).join('')}`;
+
+const conv=(txt,k)=>txt.replace(/[a-z]/gi,ch=>{const up=ch===ch.toUpperCase(),n=mod(A.indexOf(ch.toUpperCase())+k);return up?A[n]:A[n].toLowerCase()});
+const enc=mode==='enc';
+
+function light(i){
+  active=i;
+  $('hl').style.transform=`rotate(${i*ST}deg)`;
+  document.querySelectorAll('#grid [data-i]').forEach(d=>d.classList.toggle('act',+d.dataset.i===i&&!d.classList.contains('num')));
+  const p=A[i],c=A[mod(i+shift)];
+  $('how').innerHTML=mode==='enc'
+   ?`Encrypting: find <span class="p">${p}</span> on the blue outer ring, then read the red letter under it: <span class="c">${c}</span>.`
+   :`Decrypting: find <span class="c">${c}</span> on the red inner disk, then read the blue letter above it: <span class="p">${p}</span>.`;
+}
+function render(keep){
+  const e=mode==='enc',sg=shift>0?'+'+shift:shift<0?'−'+(-shift):'0';
+  $('inner').style.transform=`translateZ(26px) rotate(${-shift*ST}deg)`;
+  $('sv').textContent=sg;$('hubv').textContent=sg;$('slider').value=shift;
+  const alt=shift>0?shift-26:shift<0?shift+26:0;
+  $('equiv').textContent=shift===0?'Shift 0: every letter stays the same.':`A becomes ${A[mod(shift)]}. Same wheel as a shift of ${alt>0?'+'+alt:'−'+(-alt)}.`;
+  document.querySelectorAll('.seg button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.m===mode));
+  $('inBox').className='box '+(e?'plain':'cipher');$('outBox').className='box '+(e?'cipher':'plain');
+  $('inTag').textContent=e?'Plaintext · you type':'Ciphertext · you type';
+  $('outTag').textContent=e?'Ciphertext · encrypted':'Plaintext · decrypted';
+  document.querySelectorAll('#grid .cr').forEach(d=>d.textContent=A[mod(+d.dataset.i+shift)]);
+  const res=conv($('inp').value,e?shift:-shift);
+  $('out').innerHTML=res.split('').map((ch,j)=>{
+    if(!/[a-z]/i.test(ch))return `<span class="ch sp">${ch===' '?'&nbsp;':ch.replace(/[&<>"']/g,x=>'&#'+x.charCodeAt(0)+';')}</span>`;
+    const L=ch.toUpperCase(),pi=e?mod(A.indexOf(L)-shift):A.indexOf(L);
+    return `<span class="ch" data-i="${pi}" data-j="${j}">${ch}</span>`}).join('');
+  $('found').textContent=(myst!==null&&mode==='dec'&&shift===myst)?'You cracked it! The mystery shift was '+(myst>0?'+':'')+myst+'.':(myst!==null&&mode==='dec'?'Turn the wheel until the plaintext makes sense.':'');
+  light(keep===undefined?active:keep);
+}
+function stop(){clearTimeout(timer);timer=null;$('play').textContent='▶ Step through on the wheel';document.querySelectorAll('.ch.on').forEach(x=>x.classList.remove('on'))}
+function setShift(s){shift=Math.max(-25,Math.min(25,s));stop();render()}
+
+$('minus').onclick=()=>setShift(shift-1);$('plus').onclick=()=>setShift(shift+1);
+$('slider').oninput=e=>setShift(+e.target.value);
+$('reset').onclick=()=>setShift(0);
+$('flat').onclick=e=>{const f=$('stage').classList.toggle('flat');e.target.setAttribute('aria-pressed',f);e.target.textContent=f?'3D view':'Flat view'};
+document.querySelectorAll('.seg button').forEach(b=>b.onclick=()=>{if(b.dataset.m===mode)return;const r=conv($('inp').value,mode==='enc'?shift:-shift);mode=b.dataset.m;$('inp').value=r;stop();render()});
+$('inp').oninput=()=>{stop();const v=$('inp').value.match(/[a-z]/gi);const L=v?v[v.length-1].toUpperCase():null;
+  render(L?(mode==='enc'?A.indexOf(L):mod(A.indexOf(L)-shift)):undefined)};
+$('out').onclick=e=>{const c=e.target.closest('.ch[data-i]');if(!c)return;stop();c.classList.add('on');light(+c.dataset.i)};
+$('grid').onclick=e=>{const c=e.target.closest('[data-i]');if(c)light(+c.dataset.i)};
+$('swap').onclick=()=>{$('inp').value=conv($('inp').value,mode==='enc'?shift:-shift);mode=mode==='enc'?'dec':'enc';stop();render()};
+$('copy').onclick=async()=>{const t=conv($('inp').value,mode==='enc'?shift:-shift);try{await navigator.clipboard.writeText(t);$('copy').textContent='Copied ✓'}catch(_){$('copy').textContent='Select the text to copy'}setTimeout(()=>$('copy').textContent='Copy result',1600)};
+$('play').onclick=()=>{
+  if(timer){stop();return}
+  const chips=[...document.querySelectorAll('#out .ch[data-i]')];if(!chips.length)return;
+  $('play').textContent='■ Stop';let k=0;
+  const go=()=>{chips.forEach(x=>x.classList.remove('on'));if(k>=chips.length){stop();return}
+    chips[k].classList.add('on');light(+chips[k].dataset.i);k++;timer=setTimeout(go,1100)};
+  go();
+};
+const msgs=['Veni vidi vici','Attack at dawn','The password is pizza','Meet behind the gym','Romans love roads','Homework is due Friday'];
+$('mystery').onclick=()=>{let s;do{s=Math.floor(Math.random()*25)+1}while(s===shift);myst=s;mode='dec';
+  $('inp').value=conv(msgs[Math.floor(Math.random()*msgs.length)],s);shift=0;stop();render()};
+
+/* drag to turn the inner disk */
+const stage=$('stage');let drag=null;
+const ang=e=>{const r=stage.getBoundingClientRect(),t=stage.classList.contains('flat')?1:Math.cos(46*Math.PI/180);
+  return Math.atan2(e.clientX-(r.left+r.width/2),-(e.clientY-(r.top+r.height/2))/t)*180/Math.PI};
+stage.addEventListener('pointerdown',e=>{drag={a:ang(e),s:shift};stage.classList.add('drag');stage.setPointerCapture(e.pointerId)});
+stage.addEventListener('pointermove',e=>{if(!drag)return;let d=ang(e)-drag.a;d=((d+540)%360)-180;
+  const ns=Math.max(-25,Math.min(25,drag.s-Math.round(d/ST)));if(ns!==shift){shift=ns;stop();render()}
+  if(Math.abs(d)>170){drag.a=ang(e);drag.s=shift}});
+const end=()=>{drag=null;stage.classList.remove('drag')};
+stage.addEventListener('pointerup',end);stage.addEventListener('pointercancel',end);
+
+render(A.indexOf('M'));
+}
+</script>
+</body>
+</html>
